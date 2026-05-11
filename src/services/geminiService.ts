@@ -1,4 +1,3 @@
-// src/services/geminiService.ts
 import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
 
 // ==========================================
@@ -92,8 +91,8 @@ function mockSemanticSearch(query: string, topK: number = 3): DocumentChunk[] {
 function generateMockResponse(query: string, context: DocumentChunk[]): string {
   const lowerQuery = query.toLowerCase();
   
-  // Сценарий 1: Сверка толщины переборки
-  if (lowerQuery.includes('переборка') && lowerQuery.includes('толщин')) {
+  // Сценарий 1: Сверка толщины переборки (UC-06 Simulation in Chat)
+  if ((lowerQuery.includes('переборка') && lowerQuery.includes('толщин')) || lowerQuery.includes('узел 42')) {
     const norm = context.find(c => c.metadata.type === 'normative' && c.metadata.component === 'переборка');
     const drawing = context.find(c => c.metadata.type === 'drawing' && c.metadata.component === 'Переборка продольная');
     
@@ -113,7 +112,14 @@ function generateMockResponse(query: string, context: DocumentChunk[]): string {
 ${status}: ${actualThickness >= normThickness ? 'Параметр в допуске' : `Требуется увеличить толщину на ${normThickness - actualThickness} мм`}
 
 ## 4. Рекомендации
-Рекомендуется проверить запас по коррозии согласно РД 5-0315, п. 5.1.`;
+Рекомендуется проверить запас по коррозии согласно РД 5-0315, п. 5.1.
+
+## 5. Сравнительная таблица
+| Параметр | Требование НСИ | Факт (Чертеж) | Статус |
+| :--- | :--- | :--- | :--- |
+| Толщина листа | ≥ 12.5 мм | ${actualThickness} мм | ${actualThickness >= normThickness ? 'OK' : 'FAIL'} |
+| Материал | Сталь РСА | Сталь РСА | OK |
+`;
     }
   }
   

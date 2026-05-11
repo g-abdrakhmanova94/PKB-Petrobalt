@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useState, useRef, useEffect } from "react";
 import { 
   Send, 
@@ -19,6 +18,8 @@ import {
   BarChart2,
   Database,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Info,
   Download
 } from "lucide-react";
@@ -69,6 +70,8 @@ const INITIAL_DOCS: Document[] = [
   { id: "1", name: "Правила классификации и постройки морских судов. Часть II", type: "Правила РС", status: "synced", description: "Изд. 2023, Глава 2.4", updatedAt: CURRENT_DATE },
   { id: "2", name: "ГОСТ Р 52927-2015", type: "ГОСТ", status: "synced", description: "Прокат для судостроения из стали нормальной прочности", updatedAt: CURRENT_DATE },
   { id: "3", name: "СП 55.13330.2016", type: "СНиП", status: "processing", description: "Дома жилые одноквартирные", updatedAt: CURRENT_DATE },
+  { id: "4", name: "Чертеж общего расположения судна (22220-302-001)", type: "Чертеж", status: "synced", description: "Лист 1: Основные виды", updatedAt: CURRENT_DATE },
+  { id: "5", name: "Схема конструктивной мидель-шпангоута", type: "Чертеж", status: "synced", description: "Секция 4, шп. 30-45", updatedAt: CURRENT_DATE },
 ];
 
 const INITIAL_LIBRARY = [
@@ -76,6 +79,8 @@ const INITIAL_LIBRARY = [
   { id: 'l2', name: 'ГОСТ_Р_52927.pdf', pages: 45, status: 'OCR OK', date: CURRENT_DATE },
   { id: 'l3', name: 'РД_5_0315.pdf', pages: 88, status: 'SYNCED', date: CURRENT_DATE },
   { id: 'l4', name: 'СП_55_13330.pdf', pages: 210, status: 'PROCESSING', date: CURRENT_DATE },
+  { id: 'l5', name: 'Drawing_22220_General.pdf', pages: 12, status: 'SYNCED', date: CURRENT_DATE },
+  { id: 'l6', name: 'Midship_Section_S04.pdf', pages: 5, status: 'SYNCED', date: CURRENT_DATE },
 ];
 
 const MOCK_USERS = [
@@ -107,8 +112,10 @@ export default function App() {
   const [searchMatches, setSearchMatches] = useState(0);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isTabSelectorOpen, setIsTabSelectorOpen] = useState(false);
+  const [focusedMatchRect, setFocusedMatchRect] = useState<{ top: number, left: number, width: number, height: number } | null>(null);
   const [processingItemIds, setProcessingItemIds] = useState<Set<string>>(new Set());
   const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+  const [isMeridianConnected, setIsMeridianConnected] = useState(true);
   const [errorLogs, setErrorLogs] = useState([
     { id: 'err1', stage: 'OCR', error: 'Low contrast on page 12', time: '14:20', status: 'Warning' },
     { id: 'err2', stage: 'Parsing', error: 'Table boundary detection failed', time: '15:10', status: 'Failed' },
@@ -125,7 +132,8 @@ export default function App() {
   ];
 
   const [libraryDocs, setLibraryDocs] = useState(INITIAL_LIBRARY);
-  const [docs, setDocs] = useState(INITIAL_DOCS);
+  // Инициализируем docs на основе INITIAL_DOCS, но будем обновлять их динамически
+  const [docs, setDocs] = useState<Document[]>(INITIAL_DOCS);
   const [usersList, setUsersList] = useState(MOCK_USERS);
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -172,6 +180,22 @@ export default function App() {
     }
   }, [messages, activeTab, user]);
 
+  // Синхронизация: при изменении libraryDocs обновляем список контекстных документов в чате
+  useEffect(() => {
+    // Преобразуем libraryDocs в формат Document для sidebar чата
+    const syncedDocs = libraryDocs.map(libDoc => ({
+      id: libDoc.id,
+      name: libDoc.name.replace('.pdf', ''),
+      type: libDoc.name.includes('ГОСТ') ? 'ГОСТ' : libDoc.name.includes('Регистр') ? 'Правила РС' : 'Норматив',
+      status: (libDoc.status === 'OCR OK' || libDoc.status === 'SYNCED' ? 'synced' : 'processing') as "synced" | "processing" | "error",
+      description: `${libDoc.pages} стр.`,
+      updatedAt: libDoc.date
+    }));
+    // Объединяем с начальными документами, избегая дубликатов по ID если нужно, 
+    // но для простоты заменим docs на актуальный список из библиотеки + статические
+    setDocs([...INITIAL_DOCS.slice(0, 1), ...syncedDocs]); 
+  }, [libraryDocs]);
+
   // ==========================================
   // ОБНОВЛЁННАЯ ФУНКЦИЯ ОТПРАВКИ СООБЩЕНИЙ
   // ==========================================
@@ -193,7 +217,6 @@ export default function App() {
       const history = messages.map(m => ({ role: m.role, content: m.content }));
       
       // Вызов сервиса с параметром useMock для режима разработки
-      // В продакшене (production) useMock будет false, и пойдёт реальный запрос к Gemini
       const response = await chatWithCoordinator(inputValue, history, { 
         useMock: USE_MOCK_MODE 
       });
@@ -236,13 +259,16 @@ export default function App() {
   // ==========================================
   const handleRetryOCR = (id: string, name: string) => {
     setProcessingItemIds(prev => new Set(prev).add(id));
-    // alert(`Запущен повторный OCR для: ${name}. Ожидайте завершения...`);
     setTimeout(() => {
       setProcessingItemIds(prev => {
         const next = new Set(prev);
         next.delete(id);
         return next;
       });
+      // Обновляем статус в библиотеке
+      setLibraryDocs(prev => prev.map(doc => 
+        doc.id === id ? { ...doc, status: 'OCR OK' } : doc
+      ));
       alert(`OCR завершен для ${name}. Данные успешно синхронизированы с базой.`);
     }, 2000);
   };
@@ -272,12 +298,58 @@ export default function App() {
     }, 1500);
   };
 
+  const handleDownloadPDF = (doc: any) => {
+    alert(`Загрузка файла: ${doc.name || doc.id}.pdf\nЗапрос отправлен на сервер формирования архива...`);
+  };
+
   const openDocumentViewer = (doc: Document) => {
     setSelectedDocumentForView(doc);
     setSearchTerm("");
     setSearchMatches(0);
     setCurrentMatchIndex(0);
+    setFocusedMatchRect(null);
     setIsDocumentViewingModalOpen(true);
+  };
+
+  const navigateToMatch = (direction: 'next' | 'prev') => {
+    const marks = document.querySelectorAll('.doc-content-body mark');
+    if (marks.length === 0) return;
+
+    let nextIdx;
+    if (direction === 'next') {
+      nextIdx = currentMatchIndex % marks.length;
+    } else {
+      nextIdx = (currentMatchIndex - 2 + marks.length) % marks.length;
+    }
+    
+    setCurrentMatchIndex(nextIdx + 1);
+    
+    marks.forEach((m, idx) => {
+      if (idx === nextIdx) {
+        m.setAttribute('data-current', 'true');
+        m.classList.add('ring-2', 'ring-amber-500', 'ring-offset-2', 'scale-110');
+        m.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Simulate Coordinate Detection (UC-07)
+        // We get the position relative to the document container
+        const container = document.querySelector('.doc-viewport');
+        if (container) {
+          const mRect = m.getBoundingClientRect();
+          const cRect = container.getBoundingClientRect();
+          
+          // Add a "jitter" or offset to simulate coordinate block detection (x, y, w, h)
+          setFocusedMatchRect({
+            top: mRect.top - cRect.top + container.scrollTop - 4,
+            left: mRect.left - cRect.left + container.scrollLeft - 8,
+            width: mRect.width + 16,
+            height: mRect.height + 8
+          });
+        }
+      } else {
+        m.removeAttribute('data-current');
+        m.classList.remove('ring-2', 'ring-amber-500', 'ring-offset-2', 'scale-110');
+      }
+    });
   };
 
   const HighlightedText = ({ text, highlight }: { text: string; highlight: string }) => {
@@ -367,6 +439,19 @@ export default function App() {
                             ),
                             li: ({ children }) => (
                               <li className="text-sm">{children}</li>
+                            ),
+                            table: ({ children }) => (
+                              <div className="overflow-x-auto my-4">
+                                <table className="min-w-full text-xs border border-sleek-border rounded-lg">
+                                  {children}
+                                </table>
+                              </div>
+                            ),
+                            th: ({ children }) => (
+                              <th className="bg-sleek-bg p-2 text-left font-bold border-b border-sleek-border">{children}</th>
+                            ),
+                            td: ({ children }) => (
+                              <td className="p-2 border-b border-sleek-border last:border-b-0">{children}</td>
                             )
                           }}
                         >
@@ -403,6 +488,7 @@ export default function App() {
                 <button 
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim() || isLoading}
+                  title="Отправить сообщение нейро-координатору"
                   className="bg-sleek-accent hover:bg-sleek-accent-hover text-white px-6 py-2 rounded-lg font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <Send size={14} />
@@ -426,10 +512,9 @@ export default function App() {
                 {docs.map((doc) => (
                   <div 
                     key={doc.id} 
-                    onClick={() => openDocumentViewer(doc)}
-                    className="p-4 border-b border-sleek-border last:border-b-0 hover:bg-sleek-bg/50 transition-colors cursor-pointer group"
+                    className="p-4 border-b border-sleek-border last:border-b-0 hover:bg-sleek-bg/50 transition-colors cursor-pointer group relative"
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between" onClick={() => openDocumentViewer(doc)}>
                       <div className="flex-1 min-w-0">
                         <div className="text-[10px] font-bold uppercase tracking-widest text-sleek-text-muted mb-1 group-hover:text-sleek-accent transition-colors">
                           {doc.type}
@@ -437,8 +522,19 @@ export default function App() {
                         <div className="text-[13px] font-bold mb-1 leading-tight truncate" title={doc.name}>{doc.name}</div>
                         <div className="text-[11px] text-sleek-text-muted">{doc.description}</div>
                       </div>
-                      <ChevronRight size={14} className="text-sleek-text-muted opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                      <ChevronRight size={14} className="text-sleek-text-muted opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
                     </div>
+                    
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadPDF(doc);
+                      }}
+                      title="Скачать PDF документ"
+                      className="absolute right-8 top-1/2 -translate-y-1/2 p-2 text-sleek-text-muted hover:text-sleek-accent opacity-0 group-hover:opacity-100 transition-all bg-white shadow-sm rounded-lg border border-sleek-border hover:scale-110 active:scale-95"
+                    >
+                      <Download size={14} />
+                    </button>
                   </div>
                 ))}
 
@@ -497,7 +593,7 @@ export default function App() {
                     <th className="p-4 font-bold uppercase tracking-tighter text-xs">Стр.</th>
                     <th className="p-4 font-bold uppercase tracking-tighter text-xs">Статус обработки</th>
                     <th className="p-4 font-bold uppercase tracking-tighter text-xs">Дата обновления</th>
-                    {user.role === 'KNOWLEDGE_ADMIN' && <th className="p-4 font-bold uppercase tracking-tighter text-xs">Действия</th>}
+                    <th className="p-4 font-bold uppercase tracking-tighter text-xs">Действия</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-sleek-border">
@@ -515,17 +611,27 @@ export default function App() {
                         </span>
                       </td>
                       <td className="p-4 text-sleek-text-muted font-mono">{doc.date}</td>
-                      {user.role === 'KNOWLEDGE_ADMIN' && (
-                        <td className="p-4">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          {user.role === 'KNOWLEDGE_ADMIN' && (
+                            <button 
+                              disabled={processingItemIds.has(doc.id)}
+                              onClick={() => handleRetryOCR(doc.id, doc.name)}
+                              title="Запустить повторный процесс распознавания текста"
+                              className="text-[10px] font-bold text-sleek-accent hover:underline uppercase disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              {processingItemIds.has(doc.id) ? "Обработка..." : "Повторный OCR"}
+                            </button>
+                          )}
                           <button 
-                            disabled={processingItemIds.has(doc.id)}
-                            onClick={() => handleRetryOCR(doc.id, doc.name)}
-                            className="text-[10px] font-bold text-sleek-accent hover:underline uppercase disabled:opacity-30 disabled:cursor-not-allowed"
+                            onClick={() => handleDownloadPDF(doc)}
+                            title="Скачать PDF документ на компьютер"
+                            className="p-1.5 hover:bg-sleek-bg rounded transition-colors text-sleek-text-muted hover:text-sleek-accent"
                           >
-                            {processingItemIds.has(doc.id) ? "Обработка..." : "Повторный OCR"}
+                            <Download size={14} />
                           </button>
-                        </td>
-                      )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -708,6 +814,7 @@ export default function App() {
           <div className="flex-1 bg-sleek-panel rounded-xl border border-sleek-border shadow-sm flex flex-col overflow-hidden p-6 max-w-2xl mx-auto w-full mt-10 mb-10 h-full max-h-[calc(100vh-160px)] relative">
             <button 
               onClick={() => setActiveTab('chat')}
+              title="Закрыть настройки и вернуться в чат"
               className="absolute right-6 top-6 p-2 hover:bg-sleek-bg rounded-lg transition-colors text-sleek-text-muted"
             >
               <X size={20} />
@@ -770,13 +877,24 @@ export default function App() {
               <div className="flex items-center justify-between p-4 bg-sleek-bg rounded-lg border border-sleek-border">
                 <div>
                   <p className="text-sm font-bold">Интеграция с ИС Меридиан</p>
-                  <p className="text-xs text-sleek-status-text font-bold">Подключено (API v2.4)</p>
+                  <p className={cn(
+                    "text-xs font-bold",
+                    isMeridianConnected ? "text-sleek-status-text" : "text-red-500"
+                  )}>
+                    {isMeridianConnected ? "Подключено (API v2.4)" : "Отключено"}
+                  </p>
                 </div>
                 <button 
                   disabled={user.role !== 'SYSTEM_ADMIN'}
-                  className="text-xs font-bold text-red-500 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-50 disabled:opacity-30"
+                  onClick={() => setIsMeridianConnected(!isMeridianConnected)}
+                  className={cn(
+                    "text-xs font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-30",
+                    isMeridianConnected 
+                      ? "text-red-500 border border-red-200 hover:bg-red-50" 
+                      : "text-sleek-accent border border-sleek-accent hover:bg-sleek-accent/10"
+                  )}
                 >
-                  Отключить
+                  {isMeridianConnected ? "Отключить" : "Подключить"}
                 </button>
               </div>
 
@@ -923,6 +1041,7 @@ export default function App() {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              title={isSidebarOpen ? "Свернуть меню" : "Развернуть меню"}
               className="md:hidden text-sleek-text-muted hover:text-sleek-text-main"
             >
               <Menu size={24} />
@@ -942,6 +1061,7 @@ export default function App() {
               <div className="relative">
                 <button 
                   onClick={() => setIsProjectSelectorOpen(!isProjectSelectorOpen)}
+                  title="Выбрать проект"
                   className="hover:text-sleek-accent transition-colors flex items-center gap-1 font-semibold text-sleek-text-main"
                 >
                   {user.project}
@@ -957,7 +1077,11 @@ export default function App() {
                         onClick={() => {
                           setUser({...user, project: p});
                           setIsProjectSelectorOpen(false);
-                          alert(`Переключение на проект: ${p}`);
+                          setMessages(INITIAL_MESSAGES);
+                          setSearchTerm("");
+                          setSearchMatches(0);
+                          setCurrentMatchIndex(0);
+                          alert(`Переключение на проект: ${p}. Чат и поиск сброшены.`);
                         }}
                         className={cn(
                           "w-full text-left px-4 py-2 text-sm hover:bg-sleek-bg transition-colors flex items-center justify-between",
@@ -975,6 +1099,7 @@ export default function App() {
               <div className="relative">
                 <button 
                   onClick={() => setIsTabSelectorOpen(!isTabSelectorOpen)}
+                  title="Переключиться между разделами системы"
                   className="hover:text-sleek-accent transition-colors flex items-center gap-1 font-semibold text-sleek-nav"
                 >
                   {NAV_ITEMS.find(i => i.id === activeTab)?.label || "Обзор"}
@@ -1195,7 +1320,7 @@ export default function App() {
                     <input 
                       type="text" 
                       placeholder="Поиск по документу..."
-                      className="w-full bg-white border border-sleek-border rounded-lg pl-10 pr-10 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sleek-accent/50"
+                      className="w-full bg-white border border-sleek-border rounded-lg pl-10 pr-32 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sleek-accent/50 transition-all shadow-inner"
                       value={searchTerm}
                       onChange={(e) => {
                         const term = e.target.value;
@@ -1208,71 +1333,100 @@ export default function App() {
                             const matches = text.match(regex);
                             setSearchMatches(matches ? matches.length : 0);
                             setCurrentMatchIndex(matches ? 1 : 0);
+                            setFocusedMatchRect(null);
                           }
                         } else {
                           setSearchMatches(0);
                           setCurrentMatchIndex(0);
+                          setFocusedMatchRect(null);
                         }
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && searchTerm) {
-                          const marks = document.querySelectorAll('.doc-content-body mark');
-                          if (marks.length > 0) {
-                            const nextIdx = currentMatchIndex % marks.length;
-                            setCurrentMatchIndex(nextIdx + 1);
-                            
-                            marks.forEach((m, idx) => {
-                              if (idx === nextIdx) {
-                                m.setAttribute('data-current', 'true');
-                                m.classList.add('ring-2', 'ring-amber-500', 'ring-offset-2', 'scale-110');
-                                m.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                              } else {
-                                m.removeAttribute('data-current');
-                                m.classList.remove('ring-2', 'ring-amber-500', 'ring-offset-2', 'scale-110');
-                              }
-                            });
-                          }
+                          navigateToMatch('next');
+                        } else if (e.key === 'ArrowDown' && searchTerm) {
+                          e.preventDefault();
+                          navigateToMatch('next');
+                        } else if (e.key === 'ArrowUp' && searchTerm) {
+                          e.preventDefault();
+                          navigateToMatch('prev');
                         }
                       }}
                     />
                     {searchTerm && (
-                      <div className="absolute right-10 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-                        <span className="text-[10px] font-bold text-sleek-accent bg-sleek-accent/10 px-1.5 py-0.5 rounded">
-                          {searchMatches > 0 ? `${currentMatchIndex} / ${searchMatches}` : "0/0"}
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-white pl-1">
+                        <span className="text-[9px] font-bold text-sleek-accent bg-sleek-accent/10 px-1 py-0.5 rounded mr-1 min-w-[36px] text-center border border-sleek-accent/20">
+                          {searchMatches > 0 ? `${currentMatchIndex}/${searchMatches}` : "0/0"}
                         </span>
+                        <div className="flex border-l border-sleek-border ml-1 pl-1 gap-0.5">
+                          <button 
+                            onClick={() => navigateToMatch('prev')}
+                            className="p-1 hover:bg-sleek-bg rounded text-sleek-text-muted hover:text-sleek-accent transition-colors"
+                            title="Предыдущее (↑)"
+                          >
+                            <ChevronUp size={14} />
+                          </button>
+                          <button 
+                            onClick={() => navigateToMatch('next')}
+                            className="p-1 hover:bg-sleek-bg rounded text-sleek-text-muted hover:text-sleek-accent transition-colors"
+                            title="Следующее (↓ / Enter)"
+                          >
+                            <ChevronDown size={14} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setSearchTerm("");
+                              setSearchMatches(0);
+                              setCurrentMatchIndex(0);
+                              setFocusedMatchRect(null);
+                            }}
+                            className="p-1 hover:bg-red-50 rounded text-sleek-text-muted hover:text-red-500 transition-colors ml-1"
+                            title="Очистить"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
                       </div>
-                    )}
-                    {searchTerm && (
-                      <button 
-                        onClick={() => {
-                          setSearchTerm("");
-                          setSearchMatches(0);
-                          setCurrentMatchIndex(0);
-                        }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-sleek-text-muted hover:text-sleek-text-main"
-                        title="Очистить поиск"
-                      >
-                        <X size={14} />
-                      </button>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                    <button 
-                    onClick={() => alert("Подготовка PDF к скачиванию. Пожалуйста, подождите...")}
+                    onClick={() => handleDownloadPDF(selectedDocumentForView)}
                     className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-sleek-accent" 
-                    title="Скачать PDF"
+                    title="Скачать данный документ в формате PDF"
                    >
                      <Download size={20} /> 
                    </button>
-                   <button onClick={() => setIsDocumentViewingModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-sleek-text-muted">
+                   <button 
+                     onClick={() => setIsDocumentViewingModalOpen(false)} 
+                     className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-sleek-text-muted"
+                     title="Закрыть окно просмотра"
+                   >
                      <X size={24} />
                    </button>
                 </div>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-10 bg-slate-100 flex justify-center">
+              <div className="flex-1 overflow-y-auto p-10 bg-slate-100 flex justify-center relative doc-viewport">
+                 {focusedMatchRect && (
+                   <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="absolute z-10 border-2 border-amber-500 bg-amber-500/20 rounded pointer-events-none transition-all duration-300"
+                    style={{
+                      top: focusedMatchRect.top,
+                      left: focusedMatchRect.left,
+                      width: focusedMatchRect.width,
+                      height: focusedMatchRect.height
+                    }}
+                   >
+                     <div className="absolute -top-6 left-0 bg-amber-500 text-white text-[8px] px-1.5 py-0.5 rounded-t font-bold uppercase whitespace-nowrap">
+                       Detected Entity Bbox:  [x:{(focusedMatchRect.left).toFixed(1)}, y:{(focusedMatchRect.top).toFixed(1)}]
+                     </div>
+                   </motion.div>
+                 )}
                  <div className="bg-white w-full max-w-3xl shadow-xl p-16 font-serif line-height-relaxed min-h-[1200px] doc-content-body">
                     <h1 className="text-2xl font-bold text-center mb-10 uppercase tracking-tighter">
                       <HighlightedText text={selectedDocumentForView.name} highlight={searchTerm} />
@@ -1318,9 +1472,9 @@ export default function App() {
 
                        <p className="font-bold text-lg border-b border-slate-200 pb-2 mt-8">Приложения</p>
                        <ul className="list-disc list-inside space-y-2">
-                         <li>Чертеж типового узла переборки шп. 45-60</li>
-                         <li>Расчетная схема №42-Ф</li>
-                         <li>Сертификаты соответствия материалов (ИС Меридиан)</li>
+                         <li><HighlightedText text="Чертеж типового узла переборки шп. 45-60" highlight={searchTerm} /></li>
+                         <li><HighlightedText text="Расчетная схема №42-Ф" highlight={searchTerm} /></li>
+                         <li><HighlightedText text="Сертификаты соответствия материалов (ИС Меридиан)" highlight={searchTerm} /></li>
                        </ul>
                     </div>
                  </div>
@@ -1344,7 +1498,12 @@ export default function App() {
             >
               <div className="p-6 border-b border-sleek-border flex justify-between items-center bg-sleek-bg/30">
                 <h3 className="font-bold text-sm uppercase tracking-wider">Редактирование: {editingUser.name}</h3>
-                <button onClick={() => setIsEditUserModalOpen(false)}><X size={20} /></button>
+                <button 
+                  onClick={() => setIsEditUserModalOpen(false)}
+                  title="Закрыть окно редактирования"
+                >
+                  <X size={20} />
+                </button>
               </div>
               <div className="p-6 space-y-4">
                 <div>
