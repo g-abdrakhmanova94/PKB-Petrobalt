@@ -1,20 +1,55 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🚢 Нейро-координатор ПКБ «Петробалт»
 
-# Run and deploy your AI Studio app
+> Интеллектуальный ассистент для инженеров-конструкторов судов  
+> *Поиск по нормативной базе • Проверка проектных решений • Извлечение параметров из чертежей*
 
-This contains everything you need to run your app locally.
+[![React](https://img.shields.io/badge/React-18-blue.svg)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org)
+[![Docker](https://img.shields.io/badge/Docker-✅-2496ED.svg)](https://www.docker.com)
+[![License: Internal](https://img.shields.io/badge/License-Internal-red.svg)](LICENSE)
 
-View your app in AI Studio: https://ai.studio/apps/559e9949-e0db-4ac9-9acf-bbe456345c77
+---
 
-## Run Locally
+## 🎯 О проекте
 
-**Prerequisites:**  Node.js
+**Нейро-координатор** — AI-ассистент для ПКБ «Петробалт», который сокращает время поиска требований в нормативной документации с 10–30 минут до 5–15 секунд.
 
+### ✨ Возможности
+- 🔍 **Семантический поиск** по 4500+ документам (ГОСТы, Правила РС, СНиПы, чертежи)
+- 🤖 **Диалог с ассистентом** на естественном языке с ответами по шаблону
+- ✅ **Валидация решений**: автоматическая сверка параметров чертежа с нормами
+- 📎 **Трассировка источников**: каждый ответ содержит ссылку на документ и страницу
+- 👥 **Ролевой доступ**: инженер, администратор знаний, системный администратор
+- 📊 **Мониторинг**: контроль веса конструкций, центра тяжести, запаса плавучести
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+> ⚠️ **Важно**: ИИ — инструмент поддержки решений. Финальное инженерное решение принимает специалист.
+
+---
+
+## 🚀 Быстрый старт (5 минут)
+
+### Требования
+| Компонент | Версия | Ссылка |
+|-----------|--------|--------|
+| Git | 2.30+ | [git-scm.com](https://git-scm.com) |
+| Docker Desktop | 20.10+ | [docker.com](https://www.docker.com) |
+
+> 💡 **Совет для Windows**: Используйте путь без кириллицы и пробелов, например `C:\projects\petrobalt`
+
+### Установка
+
+```powershell
+# 1. Перейдите в папку для проектов
+cd C:\projects
+
+# 2. Клонируйте репозиторий
+git clone https://github.com/g-abdrakhmanova94/PKB-Petrobalt.git
+
+# 3. Перейдите в папку проекта
+cd PKB-Petrobalt
+
+# 4. Запустите через Docker
+docker compose up --build
+
+# 5. Откройте в браузере
+http://localhost:3000
