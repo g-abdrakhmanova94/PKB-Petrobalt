@@ -52,4 +52,4 @@ cd PKB-Petrobalt
 docker compose up --build
 
 # 5. Откройте в браузере
-http://localhost:3000
+http://localhost:3100
