@@ -1,9 +1,6 @@
 node_modules
-dist
 .git
-.env
+.DS_Store
+npm-debug.log*
+dist
 .env.local
-README.md
-Dockerfile
-docker-compose.yml
-nginx.conf
