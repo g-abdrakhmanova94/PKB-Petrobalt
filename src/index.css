@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  
+  --color-sleek-bg: #f1f5f9;
+  --color-sleek-nav: #0f172a;
+  --color-sleek-header: #ffffff;
+  --color-sleek-panel: #ffffff;
+  --color-sleek-border: #e2e8f0;
+  --color-sleek-accent: #38bdf8;
+  --color-sleek-accent-hover: #075985;
+  --color-sleek-text-main: #1e293b;
+  --color-sleek-text-muted: #64748b;
+  --color-sleek-status-bg: #ecfdf5;
+  --color-sleek-status-text: #059669;
+  --color-sleek-source-bg: #fefce8;
+  --color-sleek-source-border: #fef08a;
+  --color-sleek-validation-ok-bg: #dcfce7;
+  --color-sleek-validation-ok-text: #166534;
+  --color-sleek-validation-ok-border: #bbf7d0;
+  --color-sleek-formula-bg: #f1f5f9;
+}
+
+@layer base {
+  body {
+    @apply bg-sleek-bg text-sleek-text-main font-sans antialiased overflow-hidden;
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-sleek-border rounded-full;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-sleek-text-muted;
+}
+
