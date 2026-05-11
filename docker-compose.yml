@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: pkb-rag-frontend:latest
+    image: pkb-frontend:latest
     container_name: pkb-frontend
     ports:
       - "3000:80"
