@@ -1,99 +1,20 @@
-# 🚢 Нейро-координатор ПКБ «Петробалт» (AI-Coordinator)
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
 
-**Версия:** 1.0  
-**Статус:** MVP / Prototype  
-**Дата актуализации:** 11.05.2026  
+# Run and deploy your AI Studio app
 
-Интеллектуальная система поддержки принятия инженерных решений для проектно-конструкторского бюро. Система использует технологии RAG (Retrieval-Augmented Generation) и большие языковые модели (LLM) для мгновенного поиска информации в нормативно-справочной базе (НСИ), проверки проектных решений и выполнения расчетов.
+This contains everything you need to run your app locally.
 
-> **Важно:** ИИ в данной системе выступает как инструмент поиска и структурирования данных. Финальные инженерные решения принимает квалифицированный сотрудник. Каждый ответ системы содержит ссылку на источник (ГОСТ, СНиП, Регистр).
+View your app in AI Studio: https://ai.studio/apps/559e9949-e0db-4ac9-9acf-bbe456345c77
 
----
+## Run Locally
 
-## 🎯 Назначение и цели
+**Prerequisites:**  Node.js
 
-Проект решает проблему ручного поиска информации в огромном массиве технической документации (~4500 документов).
 
-*   ⚡ **Скорость:** Сокращение времени поиска с 10–30 минут до 5–15 секунд.
-*   🎯 **Точность:** Исключение ошибок человеческого фактора при проверке соответствия НСИ.
-*   📚 **Единое окно:** Централизованный доступ к ГОСТам, правилам Регистра и внутренним регламентам.
-*   🔍 **Прозрачность:** Любой ответ подкреплен цитатой из документа-источника.
-
----
-
-## 🛠 Технический стек
-
-### Frontend
-*   **Framework:** React 18 + TypeScript
-*   **Styling:** Tailwind CSS (Custom Design System "Sleek UI")
-*   **Animations:** Framer Motion
-*   **Markdown:** ReactMarkdown (для рендеринга технических ответов)
-*   **Icons:** Lucide React
-
-### AI & Backend Logic
-*   **LLM Provider:** Google Gemini 1.5 Pro / Flash (via Google AI Studio API)
-*   **Architecture:** Client-side integration with System Prompt Engineering
-*   **Data Processing:** Mock data structure prepared for RAG integration (Vector DB ready)
-
-### Infrastructure
-*   **Hosting:** Vercel / GitHub Pages
-*   **Package Manager:** npm / yarn
-
----
-
-## 🚀 Быстрый старт
-
-### Предварительные требования
-*   Node.js (v18 или выше)
-*   Аккаунт Google Cloud / Google AI Studio для получения API Key
-
-### Установка
-
-1.  Клонируйте репозиторий:
-    ```bash
-    git clone https://github.com/g-abdrakhmanova94/PKB-Petrobalt.git
-    cd PKB-Petrobalt
-    ```
-
-2.  Установите зависимости:
-    ```bash
-    npm install
-    ```
-
-3.  Настройте переменные окружения:
-    Создайте файл `.env.local` в корне проекта и добавьте ваш API ключ:
-    ```env
-    VITE_GEMINI_API_KEY=ваш_ключ_из_google_ai_studio
-    ```
-
-4.  Запустите проект в режиме разработки:
-    ```bash
-    npm run dev
-    ```
-
-5.  Откройте [http://localhost:5173](http://localhost:5173) в браузере.
-
----
-
-## 👥 Роли пользователей
-
-Система поддерживает разграничение прав доступа:
-
-| Роль | Описание | Доступные функции |
-| :--- | :--- | :--- |
-| **Инженер-конструктор** | Основной пользователь | Поиск по НСИ, чат с ассистентом, просмотр CAD-метаданных, проверка узлов. |
-| **Администратор знаний** | Ответственный за базу | Загрузка новых документов (PDF/DOC), мониторинг статуса OCR, управление библиотекой. |
-| **Системный администратор** | Техническая поддержка | Управление пользователями, настройка моделей LLM, мониторинг логов и интеграций. |
-
----
-
-## 📂 Структура проекта
-
-```text
-src/
-├── components/       # UI компоненты (Sidebar, ChatWindow, Modals)
-├── lib/              # Утилиты и хелперы (cn, utils)
-├── services/         # Сервисы взаимодействия с API (geminiService.ts)
-├── App.tsx           # Главный компонент приложения
-├── main.tsx          # Точка входа
-└── ...
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
